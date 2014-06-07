@@ -34,7 +34,7 @@ var bounds = {
 };
 var muteSounds = false;
 var waitingToStart = true;
-var gravity = 0.2;
+var gravity = 0.01;
 
 function centerText(context, text, offsetX, offsetY) {
 	var textWidth = context.measureText(text).width;
@@ -67,6 +67,17 @@ function isInside(container, x, y) {
 		y < container.y + container.height;
 }
 
+function drawCircle(context, color, radius, strokeColor, strokeSize, x, y) {
+	context.beginPath();
+	context.arc(x, y, radius, 0, 2 * Math.PI, false);
+	context.fillStyle = color;
+	context.fill();
+	context.lineWidth = strokeSize;
+	context.strokeStyle = strokeColor;
+	context.stroke();
+}
+
+var player = new Splat.Entity(bounds.right / 2, bounds.bottom / 2, 32, 32);
 /*=========================================
 				 Scenes 
 ===========================================*/
@@ -101,8 +112,6 @@ game.scenes.add("main", new Splat.Scene(canvas, function() {
 	},
 	function(elapsedMillis) {
 		//simulation
-
-
 
 		if (muteSounds) {
 			//game.sounds.stop("music");
@@ -148,7 +157,47 @@ game.scenes.add("main", new Splat.Scene(canvas, function() {
 
 
 		if (!waitingToStart) {
-			// main game loop
+			var playerYSpeed = 1.8;
+			var playerXSpeed = 1.4;
+			if (game.keyboard.isPressed("left") || game.keyboard.isPressed("a")) {
+				player.vx = -playerXSpeed;
+			}
+			if (game.keyboard.isPressed("right") || game.keyboard.isPressed("d")) {
+				player.vx = playerXSpeed;
+			}
+			if (game.keyboard.isPressed("up") || game.keyboard.isPressed("w")) {
+				player.vy = -playerYSpeed;
+			}
+			if (game.keyboard.isPressed("down") || game.keyboard.isPressed("s")) {
+				player.vy = playerYSpeed;
+			}
+
+			if (game.keyboard.isPressed) {
+				player.x += player.vx;
+				player.y += player.vy;
+			} else {
+				player.x += 0;
+				player.y += 0;
+			}
+
+			player.vy += gravity;
+
+
+		}
+
+
+
+		if (player.x < bounds.left) {
+			player.x = bounds.left;
+		}
+		if (player.x > bounds.right) {
+			player.x = bounds.right;
+		}
+		if (player.y < bounds.top) {
+			player.y = bounds.top;
+		}
+		if (player.y > bounds.bottom) {
+			player.y = bounds.bottom;
 		}
 
 	},
@@ -172,7 +221,7 @@ game.scenes.add("main", new Splat.Scene(canvas, function() {
 				context.fillStyle = "#ffffff";
 				context.font = "20px helvetica";
 				centerText(context, 'hello world', 0, 25);
-
+				drawCircle(context, "rgba(255,255,255.4)", player.width, "rgba(255,255,255.4)", 0, player.x, player.y);
 			});
 		}
 
