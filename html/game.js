@@ -10,12 +10,8 @@ var manifest = {
 	"sounds": {
 		"choo": "sound/choo.wav",
 		"button": "sound/menuchange.wav"
-
-
 	},
-	"fonts": {
-
-	},
+	"fonts": {},
 	"animations": {
 		"two-scoop": {
 			"strip": "images/two-scoop-anim.png",
@@ -36,7 +32,6 @@ var manifest = {
 	}
 };
 
-
 var game = new Splat.Game(canvas, manifest);
 var textArea = {
 	x: 0,
@@ -53,9 +48,19 @@ var bounds = {
 	right: canvas.width,
 	bottom: canvas.height - textArea.height
 };
+
+var particleBounds = {
+	x: 0,
+	y: 0,
+	width: canvas.width,
+	height: canvas.height
+};
 var muteSounds = false;
 var waitingToStart = true;
 var gravity = 0.01;
+
+var bubbles = [];
+var velocity = 2;
 
 function drawTextArea(context, text) {
 	context.fillStyle = textArea.background;
@@ -71,16 +76,15 @@ function centerText(context, text, offsetX, offsetY) {
 	var y = offsetY | 0;
 	context.fillText(text, x, y);
 }
+
 var soundSwitch;
 
 function drawIntroOverlay(context, scene) {
 	scene.camera.drawAbsolute(context, function() {
-
 		context.fillStyle = "#fff";
 		context.font = "20px helvetica";
 		centerText(context, "click or tap to begin", 0, bounds.bottom / 2);
 		centerText(context, "2014 Two Scoop Games", 0, bounds.bottom - 60);
-
 		if (muteSounds) {
 			soundSwitch = game.images.get("sound-off");
 			context.drawImage(soundSwitch, (bounds.right - soundSwitch.width), 0);
@@ -88,8 +92,6 @@ function drawIntroOverlay(context, scene) {
 			soundSwitch = game.images.get("sound-on");
 			context.drawImage(soundSwitch, (bounds.right - soundSwitch.width), 0);
 		}
-
-
 	});
 }
 
@@ -100,15 +102,50 @@ function isInside(container, x, y) {
 		y < container.y + container.height;
 }
 
-// function drawCircle(context, color, radius, strokeColor, strokeSize, x, y) {
-// 	context.beginPath();
-// 	context.arc(x, y, radius, 0, 2 * Math.PI, false);
-// 	context.fillStyle = color;
-// 	context.fill();
-// 	context.lineWidth = strokeSize;
-// 	context.strokeStyle = strokeColor;
-// 	context.stroke();
-// }
+
+function spray(array, location, velocityX, velocityY, radius, color, stroke, quantity, gravity) {
+
+	for (var q = 0; q < quantity; q++) {
+		array.push({
+			x: location.x,
+			y: location.y,
+			xv: (Math.random() - 0.5) * velocityX,
+			yv: (Math.random() - 0.5) * velocityY,
+			radius: Math.random() * radius,
+			gravity: gravity,
+			color: color,
+			stroke: stroke
+		});
+
+	}
+}
+
+function drawParticles(context, particles, color) {
+	for (var i = 0; i < particles.length; i++) {
+		var particle = particles[i];
+		drawCircle(context, particle.color, particle.radius, particle.stroke, 0, particle.x, particle.y);
+	}
+}
+
+function moveParticles(elapsedMillis, particles, gravity) {
+	for (var i = 0; i < particles.length; i++) {
+		var particle = particles[i];
+		particle.x += particle.xv * elapsedMillis;
+		particle.y += particle.yv * elapsedMillis;
+		particle.yv += particle.gravity;
+
+	}
+}
+
+function drawCircle(context, color, radius, strokeColor, strokeSize, x, y) {
+	context.beginPath();
+	context.arc(x, y, radius, 0, 2 * Math.PI, false);
+	context.fillStyle = color;
+	context.fill();
+	context.lineWidth = strokeSize;
+	context.strokeStyle = strokeColor;
+	context.stroke();
+}
 
 /*=========================================
 				 Scenes 
@@ -131,17 +168,14 @@ game.scenes.add("title", new Splat.Scene(canvas, function() {
 	anim.draw(context, (bounds.right / 2) - (anim.width / 2), (bounds.bottom / 2) - (anim.height / 2));
 }));
 
-
 var playerYSpeed = 1.2;
 var playerXSpeed = 1.1;
 var playerMoving = false;
-
-
+var rockSpeed = .1;
 game.scenes.add("main", new Splat.Scene(canvas, function() {
 		// init
-
-
 		waitingToStart = true;
+
 
 		this.timers.fadeToBlack = new Splat.Timer(null, 1000, function() {
 			game.scenes.switchTo("main");
@@ -149,7 +183,19 @@ game.scenes.add("main", new Splat.Scene(canvas, function() {
 		this.squidIdle = game.animations.get("squid-idle");
 		this.squidIdleLeft = game.animations.get("squid-idle-left");
 		this.player = new Splat.AnimatedEntity((bounds.right / 2) - (this.squidIdle.width / 2), 25, this.squidIdle.width, this.squidIdle.height, this.squidIdle, 0, 0);
+		var self = this;
+		this.timers.bubbleTimer = new Splat.Timer(null, 1000, function() {
 
+			spray(bubbles, {
+					x: self.player.x + (self.player.width * .8),
+					y: self.player.y + 35
+				},
+				0.05, 0.01, 7, "rgba(255,255,255, .3)", "rgba(255,255,255, .5)", 1, -0.001);
+			this.reset();
+			this.start();
+		});
+		this.timers.bubbleTimer.start();
+		this.rock1 = new Splat.Entity((canvas.width / 2), 0, 50, 50);
 
 	},
 	function(elapsedMillis) {
@@ -159,7 +205,9 @@ game.scenes.add("main", new Splat.Scene(canvas, function() {
 			//game.sounds.stop("music");
 		}
 
+
 		if (waitingToStart) {
+
 			var soundSwitch = new Splat.Entity((canvas.width - 115), 100, 115, 109);
 			if (isInside(soundSwitch, game.mouse.x, game.mouse.y)) {
 				if (game.mouse.consumePressed(0)) {
@@ -191,6 +239,23 @@ game.scenes.add("main", new Splat.Scene(canvas, function() {
 
 
 		if (!waitingToStart) {
+			this.rock1.move(elapsedMillis);
+			this.rock1.vx = 0;
+			this.rock1.vy = rockSpeed;
+
+			this.rock1.x += this.rock1.vx;
+			this.rock1.y += this.rock1.vy;
+			// 	recycle particles	
+			for (var b = 0; b < bubbles.length; b++) {
+				if (!isInside(particleBounds, bubbles[b].x, bubbles[b].y)) {
+					bubbles.splice(b, 1);
+				}
+			}
+
+			if (bubbles.length > 0) {
+
+				moveParticles(elapsedMillis, bubbles, true);
+			}
 
 			game.animations.get("squid-idle").move(elapsedMillis);
 			game.animations.get("squid-idle-left").move(elapsedMillis);
@@ -221,7 +286,6 @@ game.scenes.add("main", new Splat.Scene(canvas, function() {
 			this.player.x += this.player.vx;
 			this.player.y += this.player.vy;
 
-
 			this.player.vy += gravity;
 			if (this.player.x < bounds.left) {
 				this.player.x = bounds.left;
@@ -239,6 +303,24 @@ game.scenes.add("main", new Splat.Scene(canvas, function() {
 				this.player.y = bounds.bottom - this.player.height;
 				this.player.vy *= -0.5;
 			}
+
+
+			//rock bounds checks
+			if (this.rock1.x < bounds.left) {
+				this.rock1.x = bounds.left;
+				this.rock1.vx *= -0.5;
+			} else if (this.rock1.x + this.rock1.width > bounds.right) {
+				this.rock1.x = bounds.right - this.rock1.width;
+				this.rock1.vx *= -0.5;
+			} else if (this.rock1.y < bounds.top) {
+				this.rock1.y = bounds.top;
+				this.rock1.vy *= -0.5;
+			} else if (this.rock1.y + this.rock1.height > bounds.bottom) {
+				this.rock1.y = bounds.bottom - this.rock1.height;
+				this.rock1.vy *= -0.5;
+			} else {
+				this.rock1.y += gravity;
+			}
 		}
 
 		if (this.player.vx < 0) {
@@ -254,11 +336,8 @@ game.scenes.add("main", new Splat.Scene(canvas, function() {
 	function(context) {
 
 		// draw
-		if (playerMoving) {
-			context.fillStyle = "#9DDCB5";
-		} else {
-			context.fillStyle = "#C3E3B3";
-		}
+
+		context.fillStyle = "#C3E3B3";
 
 		context.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -274,13 +353,12 @@ game.scenes.add("main", new Splat.Scene(canvas, function() {
 			this.player.draw(context);
 			// player bounding box
 			//context.strokeRect(this.player.x, this.player.y, this.player.width, this.player.height);
-
-
+			var self = this;
 			this.camera.drawAbsolute(context, function() {
 				//hud
-
 				drawTextArea(context, "all was well, until one day...");
-
+				drawParticles(context, bubbles);
+				drawCircle(context, "brown", self.rock1.width, "brown", 1, self.rock1.x, self.rock1.y)
 			});
 		}
 
