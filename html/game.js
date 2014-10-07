@@ -57,12 +57,12 @@ var bounds = {
 	bottom: canvas.height - textArea.height
 };
 
-var particleBounds = {
-	x: 0,
-	y: 0,
-	width: canvas.width,
-	height: canvas.height
-};
+// var particleBounds = {
+// 	x: 0,
+// 	y: 0,
+// 	width: canvas.width,
+// 	height: canvas.height
+// };
 
 
 var gravity = 0.01;
@@ -102,12 +102,12 @@ function centerText(context, text, offsetX, offsetY) {
 // 	});
 // }
 
-function isInside(container, x, y) {
-	return x >= container.x &&
-		x < container.x + container.width &&
-		y >= container.y &&
-		y < container.y + container.height;
-}
+// function isInside(container, x, y) {
+// 	return x >= container.x &&
+// 		x < container.x + container.width &&
+// 		y >= container.y &&
+// 		y < container.y + container.height;
+// }
 
 
 function spray(array, location, velocityX, velocityY, radius, color, stroke, quantity, gravity) {
@@ -273,7 +273,7 @@ game.scenes.add("main", new Splat.Scene(canvas, function() {
 
 		// 	recycle particles	
 		for (var b = 0; b < bubbles.length; b++) {
-			if (!isInside(particleBounds, bubbles[b].x, bubbles[b].y)) {
+			if (bubbles[b].x < canvas.x) {
 				bubbles.splice(b, 1);
 			}
 		}
